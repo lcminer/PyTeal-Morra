@@ -1,0 +1,390 @@
+#pragma version 6
+txn ApplicationID
+int 0
+==
+bnz main_l19
+txn OnCompletion
+int DeleteApplication
+==
+bnz main_l18
+txn OnCompletion
+int UpdateApplication
+==
+bnz main_l17
+txn OnCompletion
+int OptIn
+==
+bnz main_l16
+txn OnCompletion
+int CloseOut
+==
+bnz main_l15
+txn OnCompletion
+int NoOp
+==
+bnz main_l7
+err
+main_l7:
+txna ApplicationArgs 0
+byte "start"
+==
+bnz main_l14
+txna ApplicationArgs 0
+byte "accept"
+==
+bnz main_l13
+txna ApplicationArgs 0
+byte "resolve"
+==
+bnz main_l11
+err
+main_l11:
+callsub resolvegame_6
+main_l12:
+int 0
+return
+main_l13:
+callsub acceptgame_1
+b main_l12
+main_l14:
+callsub startgame_3
+b main_l12
+main_l15:
+int 0
+return
+main_l16:
+txn Sender
+callsub getready_0
+int 1
+return
+main_l17:
+int 0
+return
+main_l18:
+int 0
+return
+main_l19:
+int 1
+return
+
+// get_ready
+getready_0:
+store 0
+load 0
+byte "opponent"
+byte ""
+app_local_put
+load 0
+byte "hashedhand"
+byte ""
+app_local_put
+load 0
+byte "realhand"
+int 0
+app_local_put
+load 0
+byte "wager"
+int 0
+app_local_put
+load 0
+byte "hashedguess"
+byte ""
+app_local_put
+load 0
+byte "realguess"
+int 0
+app_local_put
+retsub
+
+// accept_game
+acceptgame_1:
+global GroupSize
+int 2
+==
+txn GroupIndex
+int 0
+==
+&&
+gtxn 1 TypeEnum
+int pay
+==
+&&
+gtxn 1 Receiver
+global CurrentApplicationAddress
+==
+&&
+gtxn 0 RekeyTo
+global ZeroAddress
+==
+&&
+gtxn 1 RekeyTo
+global ZeroAddress
+==
+&&
+txna Accounts 1
+global CurrentApplicationID
+app_opted_in
+&&
+assert
+txn Sender
+callsub checkifempty_2
+assert
+txn Sender
+byte "opponent"
+txna Accounts 1
+app_local_put
+txn Sender
+byte "realhand"
+txna ApplicationArgs 1
+btoi
+app_local_put
+txn Sender
+byte "wager"
+gtxn 1 Amount
+app_local_put
+txn Sender
+byte "realguess"
+txna ApplicationArgs 2
+btoi
+app_local_put
+int 1
+return
+
+// check_if_empty
+checkifempty_2:
+store 1
+load 1
+byte "opponent"
+app_local_get
+byte ""
+==
+load 1
+byte "hashedhand"
+app_local_get
+byte ""
+==
+&&
+load 1
+byte "realhand"
+app_local_get
+int 0
+==
+&&
+load 1
+byte "wager"
+app_local_get
+int 0
+==
+&&
+load 1
+byte "hashedguess"
+app_local_get
+byte ""
+==
+&&
+load 1
+byte "realguess"
+app_local_get
+int 0
+==
+&&
+retsub
+
+// start_game
+startgame_3:
+global GroupSize
+int 2
+==
+txn GroupIndex
+int 0
+==
+&&
+gtxn 1 TypeEnum
+int pay
+==
+&&
+gtxn 1 Receiver
+global CurrentApplicationAddress
+==
+&&
+gtxn 0 RekeyTo
+global ZeroAddress
+==
+&&
+gtxn 1 RekeyTo
+global ZeroAddress
+==
+&&
+txna Accounts 1
+global CurrentApplicationID
+app_opted_in
+&&
+assert
+txn Sender
+callsub checkifempty_2
+txna Accounts 1
+callsub checkifempty_2
+&&
+assert
+txn Sender
+byte "opponent"
+txna Accounts 1
+app_local_put
+txn Sender
+byte "hashedhand"
+txna ApplicationArgs 1
+app_local_put
+txn Sender
+byte "wager"
+gtxn 1 Amount
+app_local_put
+txn Sender
+byte "hashedguess"
+txna ApplicationArgs 2
+app_local_put
+int 1
+return
+
+// transfer_wager
+transferwager_4:
+store 13
+store 12
+itxn_begin
+int pay
+itxn_field TypeEnum
+load 12
+txnas Accounts
+itxn_field Receiver
+load 13
+itxn_field Amount
+itxn_submit
+retsub
+
+// calc_winner
+calcwinner_5:
+store 11
+store 10
+store 9
+store 8
+store 7
+load 9
+load 10
+==
+bnz calcwinner_5_l6
+load 7
+load 8
++
+load 9
+!=
+load 7
+load 8
++
+load 10
+!=
+&&
+bnz calcwinner_5_l5
+load 7
+load 8
++
+load 10
+==
+bnz calcwinner_5_l4
+int 0
+load 11
+int 2
+*
+callsub transferwager_4
+b calcwinner_5_l7
+calcwinner_5_l4:
+int 1
+load 11
+int 2
+*
+callsub transferwager_4
+b calcwinner_5_l7
+calcwinner_5_l5:
+int 0
+load 11
+callsub transferwager_4
+int 1
+load 11
+callsub transferwager_4
+b calcwinner_5_l7
+calcwinner_5_l6:
+int 0
+load 11
+callsub transferwager_4
+int 1
+load 11
+callsub transferwager_4
+calcwinner_5_l7:
+retsub
+
+// resolve_game
+resolvegame_6:
+global GroupSize
+int 1
+==
+txn GroupIndex
+int 0
+==
+&&
+gtxn 0 RekeyTo
+global ZeroAddress
+==
+&&
+txna Accounts 1
+byte "wager"
+app_local_get
+txna Accounts 0
+byte "wager"
+app_local_get
+==
+&&
+txn Sender
+byte "hashedhand"
+app_local_get
+txna ApplicationArgs 1
+sha256
+==
+&&
+txn Sender
+byte "hashedguess"
+app_local_get
+txna ApplicationArgs 2
+sha256
+==
+&&
+txn NumAppArgs
+int 3
+==
+&&
+assert
+txna Accounts 0
+byte "realhand"
+app_local_get
+store 2
+txna Accounts 1
+byte "realhand"
+app_local_get
+store 3
+txna Accounts 0
+byte "realguess"
+app_local_get
+store 4
+txna Accounts 1
+byte "realguess"
+app_local_get
+store 5
+txna Accounts 0
+byte "wager"
+app_local_get
+store 6
+load 2
+load 3
+load 4
+load 5
+load 6
+callsub calcwinner_5
+int 1
+return
